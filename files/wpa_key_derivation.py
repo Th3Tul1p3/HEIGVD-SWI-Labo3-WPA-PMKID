@@ -61,7 +61,6 @@ def find4wayHandShake(capture):
     """
     for frame in capture:
         # source AP --> client
-
         if frame.type == 0x2 and frame.subtype == 0x8 and bytes_hex(raw(frame)[93:95]) == b'008a':
             return frame
 
@@ -83,7 +82,8 @@ Clientmac = findAuthentication(APmac, wpa)              # "0013efd015bd"
 
 # detection du handshake et renvoi des 4 trames
 handshake = find4wayHandShake(wpa)
-print(bytes_hex(handshake))
+# Récupération du PMKID
+PMKID = raw(handshake[0])[193:-4]
 
 print("\n\nValues used to derivate keys")
 print("============================")
@@ -91,4 +91,5 @@ print("Passphrase: ", passPhrase, "\n")
 print("SSID: ", ssid, "\n")
 print("AP Mac: ", b2a_hex(APmac), "\n")
 print("CLient Mac: ", b2a_hex(Clientmac), "\n")
+print("PMKID : ", bytes_hex(PMKID))
 
